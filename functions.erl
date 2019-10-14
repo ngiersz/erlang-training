@@ -1,4 +1,4 @@
--module(lab1).
+-module(functions).
 % -export([dopasowanie/2, help_me/1, beach/1, mniejsza/2,wartosc_bezwzgledna/1, trzeci/1, fac_r/1, fac_i/1, fac_i/2, last_el/1, nalezy_i/2, polacz_r/2, polacz_l/3]).
 -compile(export_all).
 

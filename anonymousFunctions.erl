@@ -1,4 +1,4 @@
--module(lab2).
+-module(anonymousFunctions).
 -compile(export_all).
 
 % wynik = 11
