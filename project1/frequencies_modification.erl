@@ -48,10 +48,9 @@ loop_phone(Frequencies) ->
             io:format("~p~n", [Reply]),
             loop_phone(NewFrequencies);
             % loop_phone(Frequencies);
-        {request, Pid , {deallocate, Freq}} ->
-            erlang:display(Frequencies),
-            NewFrequencies = deallocate(Frequencies, Freq),
-            reply(Pid, ok),
+        {deallocate, Freq} ->
+            NewFrequencies = call(self(), {deallocate, Freq}),
+            % reply(Pid, ok),
             loop_phone(NewFrequencies);
         stop ->
             reply(self(), ok)
@@ -72,17 +71,20 @@ call(Pid, Message) ->
         {reply, Reply} -> Reply
     end.
 
-% /Client
 
 loop(Frequencies) ->
     receive
         {request, Pid, allocate} ->
+            io:format("Before allocate: ~p~n", [Frequencies]),
             {NewFrequencies, Reply} = allocate(Frequencies, Pid),
             reply(Pid, Reply),
+            io:format("After allocate: ~p~n", [NewFrequencies]),
             loop(NewFrequencies);
         {request, Pid , {deallocate, Freq}} ->
+            io:format("Before deallocate: ~p~n", [Frequencies]),
             NewFrequencies = deallocate(Frequencies, Freq),
             reply(Pid, ok),
+            io:format("After deallocate: ~p~n", [NewFrequencies]),
             loop(NewFrequencies);
         {request, Pid, stop} ->
             reply(Pid, ok)
