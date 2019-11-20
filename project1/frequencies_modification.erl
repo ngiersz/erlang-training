@@ -20,8 +20,8 @@ get_frequencies() -> [10,11].
 start_phone() ->
     Pid = spawn(frequencies_modification, init_phone, []),
     Name = "phone_" ++ [get_pid_value(Pid)],
-    io:format("Start phone with pid=~p~n", [Pid]),
-    register(list_to_atom(Name), Pid).
+    register(list_to_atom(Name), Pid),
+    Pid.
 
 get_pid_value(Pid) ->
     PidStr = pid_to_list(Pid),
@@ -36,31 +36,38 @@ init_phone() ->
 
 loop_phone(Frequencies) ->
     receive
-        {request, Pid, allocate} ->
-            io:format("~p~n", [Frequencies]),
-            {NewFrequencies, Reply} = allocate(Frequencies, Pid),
-            reply(Pid, Reply),
-            loop(NewFrequencies);
+        hello ->
+            io:format("Hello from phone!~n"),
+            loop_phone(Frequencies);
+        allocate ->
+            % io:format("~p~n", [Frequencies]),
+            % {NewFrequencies, Reply} = allocate(Frequencies, self()),
+            {NewFrequencies, Reply} = call(self(), allocate),
+            % reply(self(), Reply),
+            % io:format("~p~n", [NewFrequencies]),
+            io:format("~p~n", [Reply]),
+            loop_phone(NewFrequencies);
+            % loop_phone(Frequencies);
         {request, Pid , {deallocate, Freq}} ->
             erlang:display(Frequencies),
-            NewFrequencies = deallocate(Frequencies, Freq, Pid),
+            NewFrequencies = deallocate(Frequencies, Freq),
             reply(Pid, ok),
-            loop(NewFrequencies);
-        {request, Pid, stop} ->
-            reply(Pid, ok)
+            loop_phone(NewFrequencies);
+        stop ->
+            reply(self(), ok)
     end.
 
 % Client
-stop() -> call(stop).
+stop() -> call(self(), stop).
 
-allocate() -> call(allocate).
+% allocate() -> call(allocate).
 
-deallocate(Freq) -> call({deallocate, Freq}).
+% deallocate(Freq) -> call({deallocate, Freq}).
 
 %% We hide all message passing and the message
 %% protocol in a functional interface.
-call(Message) ->
-    frequency ! {request, self(), Message},
+call(Pid, Message) ->
+    frequency_server ! {request, Pid, Message},
     receive
         {reply, Reply} -> Reply
     end.
@@ -70,13 +77,11 @@ call(Message) ->
 loop(Frequencies) ->
     receive
         {request, Pid, allocate} ->
-            io:format("~p~n", [Frequencies]),
             {NewFrequencies, Reply} = allocate(Frequencies, Pid),
             reply(Pid, Reply),
             loop(NewFrequencies);
         {request, Pid , {deallocate, Freq}} ->
-            erlang:display(Frequencies),
-            NewFrequencies = deallocate(Frequencies, Freq, Pid),
+            NewFrequencies = deallocate(Frequencies, Freq),
             reply(Pid, ok),
             loop(NewFrequencies);
         {request, Pid, stop} ->
@@ -93,10 +98,22 @@ allocate({[], Allocated}, _Pid) ->
 allocate({[Freq|Free], Allocated}, Pid) ->
     {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
-deallocate({Free, Allocated}, Freq, Pid) ->
-    case {lists:member({Freq, Pid}, Allocated)} of 
-        {true} -> true;
-        {false} -> false
-    end.
-    % NewAllocated=lists:keydelete({Freq, Pid}, 1, Allocated),
-    % {[Freq|Free], NewAllocated}.
+deallocate({Free, Allocated}, Freq) ->
+    NewAllocated=lists:keydelete(Freq, 1, Allocated),
+    {[Freq|Free], NewAllocated}.
+
+%% The Internal Help Functions used to allocate and
+%% deallocate frequencies.
+% allocate({[], Allocated}, _Pid) ->
+%     {{[], Allocated}, {error, no_frequency}};
+% allocate({[Freq|Free], Allocated}, Pid) ->
+%     {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
+
+% deallocate({Free, Allocated}, Freq, Pid) ->
+%     case {lists:member({Freq, Pid}, Allocated)} of 
+%         {true} -> true;
+%         {false} -> false
+%     end.
+%     % NewAllocated=lists:keydelete({Freq, Pid}, 1, Allocated),
+%     % {[Freq|Free], NewAllocated}.
+
