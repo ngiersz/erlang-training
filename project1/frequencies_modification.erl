@@ -36,9 +36,6 @@ init_phone() ->
 
 loop_phone(Frequencies) ->
     receive
-        hello ->
-            io:format("Hello from phone!~n"),
-            loop_phone(Frequencies);
         allocate ->
             % io:format("~p~n", [Frequencies]),
             % {NewFrequencies, Reply} = allocate(Frequencies, self()),
@@ -75,16 +72,16 @@ call(Pid, Message) ->
 loop(Frequencies) ->
     receive
         {request, Pid, allocate} ->
-            io:format("Before allocate: ~p~n", [Frequencies]),
+            % io:format("Before allocate: ~p~n", [Frequencies]),
             {NewFrequencies, Reply} = allocate(Frequencies, Pid),
             reply(Pid, Reply),
-            io:format("After allocate: ~p~n", [NewFrequencies]),
+            % io:format("After allocate: ~p~n", [NewFrequencies]),
             loop(NewFrequencies);
         {request, Pid , {deallocate, Freq}} ->
-            io:format("Before deallocate: ~p~n", [Frequencies]),
-            NewFrequencies = deallocate(Frequencies, Freq),
+            % io:format("Before deallocate: ~p~n", [Frequencies]),
+            NewFrequencies = deallocate(Frequencies, Freq, Pid),
             reply(Pid, ok),
-            io:format("After deallocate: ~p~n", [NewFrequencies]),
+            % io:format("After deallocate: ~p~n", [NewFrequencies]),
             loop(NewFrequencies);
         {request, Pid, stop} ->
             reply(Pid, ok)
@@ -100,9 +97,15 @@ allocate({[], Allocated}, _Pid) ->
 allocate({[Freq|Free], Allocated}, Pid) ->
     {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
-deallocate({Free, Allocated}, Freq) ->
-    NewAllocated=lists:keydelete(Freq, 1, Allocated),
-    {[Freq|Free], NewAllocated}.
+deallocate({Free, Allocated}, Freq, Pid) ->
+    IsMember = lists:member({Freq, Pid}, Allocated),
+    if 
+        IsMember == true -> io:format("Frequency can be allocated.~n"),
+                            NewAllocated=lists:keydelete(Freq, 1, Allocated),
+                            {[Freq|Free], NewAllocated};
+        true -> io:format("Frequency can not be allocated.~n"),
+                {Free, Allocated}
+    end.
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
